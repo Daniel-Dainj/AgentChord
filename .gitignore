@@ -201,6 +201,7 @@ test_configs/*
 
 wandb/
 *.mp4
+!docs/static/demos/sim_videos/*.mp4
 
 # vscode settings
 .vscode/
