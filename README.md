@@ -2,6 +2,8 @@
 
 # From Reaction to Anticipation: Proactive Failure Recovery through Agentic Task Graph for Robotic Manipulation
 
+<p><strong>Robotics: Science and Systems (RSS) 2026</strong></p>
+
 <p>
   <a href="https://shengxu.net/">Sheng Xu</a><sup>1</sup>,
   <a href="https://openreview.net/profile?id=~Ruixing_Jin1">Ruixing Jin</a><sup>1</sup>,
@@ -35,16 +37,6 @@
 
 <p align="center">
   <img src="docs/static/images/paper/teaser.jpg" alt="AgentChord teaser" width="95%">
-</p>
-
-<p align="center">
-  <a href="docs/static/demos/video.mp4">
-    <img src="docs/static/images/video-posters/video.jpg" alt="AgentChord overview video" width="95%">
-  </a>
-</p>
-
-<p align="center">
-  <a href="docs/static/demos/video.mp4">Watch the overview video</a>
 </p>
 
 ## Overview
