@@ -26,7 +26,7 @@
 <p><sup>&dagger;</sup> Corresponding author</p>
 
 <p>
-  <a href="https://openreview.net/forum?id=dGIwdPrgPD">[📄 Paper]</a>
+  <a href="https://arxiv.org/abs/2605.11951">[📄 Paper]</a>
   <a href="https://shengxu.net/AgentChord/">[🌐 Project Page]</a>
   <a href="LICENSE">[⚖️ License]</a>
 </p>
