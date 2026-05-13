@@ -37,6 +37,10 @@
   <img src="docs/static/images/paper/teaser.jpg" alt="AgentChord teaser" width="95%">
 </p>
 
+<p align="center">
+  <video src="docs/static/demos/video.mp4" controls poster="docs/static/images/video-posters/video.jpg" width="95%"></video>
+</p>
+
 ## Overview
 
 AgentChord is a recovery-aware robotic manipulation system built on top of [EmbodiChain](https://github.com/DexForce/EmbodiChain). Instead of reacting to failures only after execution breaks down, AgentChord anticipates likely disturbance modes before execution, augments a nominal task graph with recovery branches, and compiles both nominal and recovery transitions into an executable graph with online monitors.
