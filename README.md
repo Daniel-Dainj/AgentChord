@@ -38,7 +38,13 @@
 </p>
 
 <p align="center">
-  <video src="docs/static/demos/video.mp4" controls poster="docs/static/images/video-posters/video.jpg" width="95%"></video>
+  <a href="docs/static/demos/video.mp4">
+    <img src="docs/static/images/video-posters/video.jpg" alt="AgentChord overview video" width="95%">
+  </a>
+</p>
+
+<p align="center">
+  <a href="docs/static/demos/video.mp4">Watch the overview video</a>
 </p>
 
 ## Overview
