@@ -34,8 +34,9 @@ DEFAULT_IMAGE_PATH = Path(__file__).resolve().parent / "test_fig.png"
 
 
 class MySAM3SemanticPredictor(SAM3SemanticPredictor):
-    def __init__(self, overrides):
+    def __init__(self, overrides, score_thresh: float = 0.05):
         super().__init__(overrides=overrides)
+        self.score_thresh = score_thresh
 
     def postprocess(self, preds, img, orig_imgs):
         """Post-process the predictions to apply non-overlapping constraints if required."""
@@ -54,9 +55,8 @@ class MySAM3SemanticPredictor(SAM3SemanticPredictor):
             [pred_boxes, pred_scores[..., None], pred_cls[..., None]], dim=-1
         )
 
-        score_thresh = 0.05
         keep = (pred_scores == pred_scores.max(dim=1, keepdim=True).values) & (
-            pred_scores > score_thresh
+            pred_scores > self.score_thresh
         )
         pred_masks = pred_masks[keep]
         pred_boxes = pred_boxes[keep]
@@ -99,6 +99,7 @@ def build_predictor(
     model: str | Path = DEFAULT_MODEL_PATH,
     save_dir: str | Path = DEFAULT_SAVE_DIR,
     conf: float = 0.5,
+    score_thresh: float = 0.05,
     half: bool = True,
     save: bool = True,
 ) -> MySAM3SemanticPredictor:
@@ -110,7 +111,10 @@ def build_predictor(
         half=half,
         save=save,
     )
-    predictor = MySAM3SemanticPredictor(overrides=overrides)
+    predictor = MySAM3SemanticPredictor(
+        overrides=overrides,
+        score_thresh=score_thresh,
+    )
     predictor.save_dir = Path(save_dir)
     return predictor
 
@@ -121,6 +125,7 @@ def predict_local_image(
     model: str | Path = DEFAULT_MODEL_PATH,
     save_dir: str | Path = DEFAULT_SAVE_DIR,
     conf: float = 0.5,
+    score_thresh: float = 0.05,
     half: bool = True,
     save: bool = True,
 ) -> list[Results]:
@@ -131,6 +136,7 @@ def predict_local_image(
         model=model,
         save_dir=save_dir,
         conf=conf,
+        score_thresh=score_thresh,
         half=half,
         save=save,
     )
@@ -163,6 +169,12 @@ def parse_args() -> argparse.Namespace:
         help="Output directory.",
     )
     parser.add_argument("--conf", type=float, default=0.2, help="Confidence threshold.")
+    parser.add_argument(
+        "--score-thresh",
+        type=float,
+        default=0.05,
+        help="Score threshold for keeping the best query of each prompt.",
+    )
     parser.add_argument("--fp32", action="store_true", help="Disable FP16 inference.")
     parser.add_argument("--no-save", action="store_true", help="Do not save visualization.")
     return parser.parse_args()
@@ -176,6 +188,7 @@ def main() -> None:
         model=args.model,
         save_dir=args.save_dir,
         conf=args.conf,
+        score_thresh=args.score_thresh,
         half=not args.fp32,
         save=not args.no_save,
     )
