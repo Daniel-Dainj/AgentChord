@@ -31,7 +31,7 @@ from embodichain.utils.utility import encode_image
 from functools import partial
 
 # Import utility functions for atom actions
-from embodichain.lab.sim.agent.atom_action_utils import (
+from embodichain.agents.agentchord.atom_action_utils import (
     draw_axis,
     get_arm_states,
     find_nearest_valid_pose,
@@ -44,13 +44,13 @@ from embodichain.lab.sim.agent.atom_action_utils import (
     resolve_action,
     sync_agent_state_from_robot,
 )
-from embodichain.lab.sim.agent.error_functions import (
+from embodichain.agents.agentchord.error_functions import (
     inject_interactive_error,
     interactive_error_requested,
     restore_interactive_error_input,
     setup_interactive_error_input,
 )
-from embodichain.lab.sim.agent.monitor_functions import *
+from embodichain.agents.agentchord.monitor_functions import *
 
 __all__ = [
     "back_to_initial_pose",

@@ -41,7 +41,7 @@ def _finalize_actions(select_qpos_traj, ee_state_list_select):
 
 def _load_drive_function():
     source_path = (
-        REPO_ROOT / "embodichain" / "lab" / "sim" / "agent" / "atom_actions.py"
+        REPO_ROOT / "embodichain" / "agents" / "agentchord" / "atom_actions.py"
     )
     source = source_path.read_text()
     module = ast.parse(source, filename=str(source_path))
@@ -99,7 +99,7 @@ drive = _load_drive_function()
 
 def _load_open_gripper_function():
     source_path = (
-        REPO_ROOT / "embodichain" / "lab" / "sim" / "agent" / "atom_actions.py"
+        REPO_ROOT / "embodichain" / "agents" / "agentchord" / "atom_actions.py"
     )
     source = source_path.read_text()
     module = ast.parse(source, filename=str(source_path))

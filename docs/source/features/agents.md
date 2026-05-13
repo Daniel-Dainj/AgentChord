@@ -166,6 +166,12 @@ The `Agent` configuration block controls the context provided to the LLMs. Promp
 
 ```text
 embodichain/agents/
+├── agentchord/
+│   ├── agent_graph.py         # Runtime task graph with recovery branches
+│   ├── graph_spec.py          # Graph schema expansion, validation, and loading
+│   ├── atom_actions.py        # Atomic action functions
+│   ├── monitor_functions.py   # Runtime failure monitors
+│   └── error_functions.py     # Error injection helpers
 ├── hierarchy/
 │   ├── agent_base.py          # Abstract base handling prompts & images
 │   ├── task_agent.py          # Nominal graph generation logic

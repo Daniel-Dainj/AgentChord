@@ -14,17 +14,14 @@
 # limitations under the License.
 # ----------------------------------------------------------------------------
 
-from importlib import import_module
+from __future__ import annotations
 
 __all__ = [
-    "agentchord",
-    "datasets",
-    "engine",
-    "rl",
+    "agent_graph",
+    "atom_action_utils",
+    "atom_actions",
+    "error_functions",
+    "graph_spec",
+    "monitor_functions",
+    "monitor_utils",
 ]
-
-
-def __getattr__(name: str):
-    if name in __all__:
-        return import_module(f"{__name__}.{name}")
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

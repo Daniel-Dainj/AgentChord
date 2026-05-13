@@ -73,7 +73,7 @@ class CompileAgent(AgentBase):
                 print(f"Compiled graph artifact already exists at {file_path}.")
                 return file_path, kwargs, None
 
-        from embodichain.lab.sim.agent.graph_spec import (
+        from embodichain.agents.agentchord.graph_spec import (
             expand_recovery_spec,
             normalize_recovery_spec,
         )
@@ -133,7 +133,7 @@ class CompileAgent(AgentBase):
         if graph_file_path.suffix != ".json":
             raise ValueError("CompileAgent executes compiled graph JSON artifacts.")
 
-        from embodichain.lab.sim.agent.graph_spec import (
+        from embodichain.agents.agentchord.graph_spec import (
             compile_agent_graph_from_file,
         )
 
@@ -163,7 +163,15 @@ def _canonicalize_recovery_spec_with_llm(
             "Recovery spec is ambiguous and CompileAgent has no LLM for canonicalization."
         )
 
-    from langchain_core.messages import HumanMessage, SystemMessage
+    try:
+        from langchain_core.messages import HumanMessage, SystemMessage
+    except ModuleNotFoundError:
+
+        class _Message:
+            def __init__(self, content: str) -> None:
+                self.content = content
+
+        HumanMessage = SystemMessage = _Message
 
     human_content = (
         "Convert the recovery spec into this canonical authoring schema:\n"

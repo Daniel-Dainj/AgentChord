@@ -27,7 +27,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _load_graph_spec_module():
-    source_path = REPO_ROOT / "embodichain" / "lab" / "sim" / "agent" / "graph_spec.py"
+    source_path = REPO_ROOT / "embodichain" / "agents" / "agentchord" / "graph_spec.py"
     spec = importlib.util.spec_from_file_location(
         "agent_graph_spec_under_test",
         source_path,

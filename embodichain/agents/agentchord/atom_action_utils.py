@@ -86,9 +86,10 @@ def get_arm_states(env, robot_name):
     """
     left_arm_current_qpos, right_arm_current_qpos = env.get_current_qpos_agent()
     left_arm_current_pose, right_arm_current_pose = env.get_current_xpos_agent()
-    left_arm_current_gripper_state, right_arm_current_gripper_state = (
-        env.get_current_gripper_state_agent()
-    )
+    (
+        left_arm_current_gripper_state,
+        right_arm_current_gripper_state,
+    ) = env.get_current_gripper_state_agent()
 
     side = "right" if "right" in robot_name else "left"
     is_left = True if side == "left" else False
@@ -341,6 +342,7 @@ def resolve_action(action, env, kwargs):
     if callable(action):
         return action(env=env, **kwargs)
     return action
+
 
 def sync_agent_state_from_robot(env) -> None:
     """Synchronize cached agent arm states from the physical robot state."""

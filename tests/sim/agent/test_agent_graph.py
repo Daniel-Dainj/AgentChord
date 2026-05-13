@@ -93,7 +93,7 @@ def _load_compile_agent_class():
 
 
 def _load_agent_graph_namespace(fake_drive):
-    source_path = REPO_ROOT / "embodichain" / "lab" / "sim" / "agent" / "agent_graph.py"
+    source_path = REPO_ROOT / "embodichain" / "agents" / "agentchord" / "agent_graph.py"
     source = source_path.read_text()
     module = ast.parse(source, filename=str(source_path))
     body = [
@@ -101,7 +101,7 @@ def _load_agent_graph_namespace(fake_drive):
         for node in module.body
         if not (
             isinstance(node, ast.ImportFrom)
-            and node.module == "embodichain.lab.sim.agent.atom_actions"
+            and node.module == "embodichain.agents.agentchord.atom_actions"
         )
     ]
     namespace = {
@@ -591,8 +591,8 @@ def test_compile_agent_executes_compiled_json_graph(
 
     lab_module = types.ModuleType("embodichain.lab")
     sim_module = types.ModuleType("embodichain.lab.sim")
-    agent_module = types.ModuleType("embodichain.lab.sim.agent")
-    graph_spec_module = types.ModuleType("embodichain.lab.sim.agent.graph_spec")
+    agent_module = types.ModuleType("embodichain.agents.agentchord")
+    graph_spec_module = types.ModuleType("embodichain.agents.agentchord.graph_spec")
 
     lab_module.__path__ = []
     sim_module.__path__ = []
@@ -601,9 +601,9 @@ def test_compile_agent_executes_compiled_json_graph(
 
     monkeypatch.setitem(sys.modules, "embodichain.lab", lab_module)
     monkeypatch.setitem(sys.modules, "embodichain.lab.sim", sim_module)
-    monkeypatch.setitem(sys.modules, "embodichain.lab.sim.agent", agent_module)
+    monkeypatch.setitem(sys.modules, "embodichain.agents.agentchord", agent_module)
     monkeypatch.setitem(
-        sys.modules, "embodichain.lab.sim.agent.graph_spec", graph_spec_module
+        sys.modules, "embodichain.agents.agentchord.graph_spec", graph_spec_module
     )
 
     compile_agent_cls = _load_compile_agent_class()

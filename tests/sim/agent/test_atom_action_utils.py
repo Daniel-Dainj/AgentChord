@@ -27,12 +27,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 def _load_get_qpos():
     source_path = (
-        REPO_ROOT
-        / "embodichain"
-        / "lab"
-        / "sim"
-        / "agent"
-        / "atom_action_utils.py"
+        REPO_ROOT / "embodichain" / "agents" / "agentchord" / "atom_action_utils.py"
     )
     source = source_path.read_text()
     module = ast.parse(source, filename=str(source_path))
@@ -75,9 +70,9 @@ def test_get_qpos_returns_corrected_pose_when_force_valid() -> None:
     corrected_pose = torch.eye(4, dtype=torch.float32)
     corrected_pose[0, 3] = 0.42
 
-    GET_QPOS_NAMESPACE["find_nearest_valid_pose"] = (
-        lambda env, select_arm, pose: corrected_pose
-    )
+    GET_QPOS_NAMESPACE[
+        "find_nearest_valid_pose"
+    ] = lambda env, select_arm, pose: corrected_pose
 
     solved_pose, solved_qpos = get_qpos(
         env=env,

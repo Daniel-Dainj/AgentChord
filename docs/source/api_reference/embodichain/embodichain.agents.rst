@@ -7,9 +7,28 @@ embodichain.agents
 
    .. autosummary::
 
+      agentchord
       datasets
       engine
       rl
+
+AgentChord Runtime
+------------------
+
+.. automodule:: embodichain.agents.agentchord
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. autosummary::
+
+      agent_graph
+      atom_action_utils
+      atom_actions
+      error_functions
+      graph_spec
+      monitor_functions
+      monitor_utils
 
 Datasets
 --------
