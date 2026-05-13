@@ -19,6 +19,7 @@ from __future__ import annotations
 import ast
 from functools import partial
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
@@ -26,6 +27,12 @@ import torch
 RIGHT_ARM_SLICE = slice(4, 8)
 LEFT_ARM_SLICE = slice(0, 4)
 REPO_ROOT = Path(__file__).resolve().parents[3]
+ATOM_ACTIONS_PATH = (
+    REPO_ROOT / "embodichain" / "agents" / "agentchord" / "atom_actions.py"
+)
+ATOM_ACTION_UTILS_PATH = (
+    REPO_ROOT / "embodichain" / "agents" / "agentchord" / "atom_action_utils.py"
+)
 
 
 def _finalize_actions(select_qpos_traj, ee_state_list_select):
@@ -40,19 +47,10 @@ def _finalize_actions(select_qpos_traj, ee_state_list_select):
 
 
 def _load_drive_function():
-    source_path = (
-        REPO_ROOT / "embodichain" / "agents" / "agentchord" / "atom_actions.py"
-    )
-    source = source_path.read_text()
-    module = ast.parse(source, filename=str(source_path))
-    function_nodes = [
-        node
-        for node in module.body
-        if isinstance(node, ast.FunctionDef) and node.name == "drive"
-    ]
-    drive_module = ast.Module(body=function_nodes, type_ignores=[])
     namespace = {
+        "Any": Any,
         "np": np,
+        "partial": partial,
         "torch": torch,
         "tqdm": lambda iterable: iterable,
         "finalize_actions": _finalize_actions,
@@ -90,25 +88,56 @@ def _load_drive_function():
         ]
 
     namespace["sync_agent_state_from_robot"] = _stub_sync_agent_state_from_robot
-    exec(compile(drive_module, filename=str(source_path), mode="exec"), namespace)
-    return namespace["drive"]
+    _load_atom_functions(
+        [
+            "convert_action_from_real_to_sim",
+            "convert_action_from_sim_to_real",
+            "drive",
+            "get_function_name",
+            "is_real_backend",
+            "set_qpos",
+            "sim_action_dim",
+            "sync_agent_state_from_sim_action",
+        ],
+        namespace,
+    )
+    return namespace
 
 
-drive = _load_drive_function()
+def _load_atom_functions(function_names: list[str], namespace: dict[str, Any]) -> None:
+    _load_functions_from_path(ATOM_ACTION_UTILS_PATH, function_names, namespace)
+    _load_functions_from_path(ATOM_ACTIONS_PATH, function_names, namespace)
+
+
+def _load_functions_from_path(
+    source_path: Path,
+    function_names: list[str],
+    namespace: dict[str, Any],
+) -> None:
+    source = source_path.read_text()
+    module = ast.parse(source, filename=str(source_path))
+    selected_nodes = []
+    for node in module.body:
+        if isinstance(node, ast.Assign):
+            target_names = [
+                target.id for target in node.targets if isinstance(target, ast.Name)
+            ]
+            if any(name.startswith(("SIM_", "REAL_")) for name in target_names):
+                selected_nodes.append(node)
+        elif isinstance(node, ast.FunctionDef) and node.name in function_names:
+            selected_nodes.append(node)
+
+    atom_module = ast.Module(body=selected_nodes, type_ignores=[])
+    exec(compile(atom_module, filename=str(source_path), mode="exec"), namespace)
+
+
+_drive_namespace = _load_drive_function()
+drive = _drive_namespace["drive"]
+convert_action_from_sim_to_real = _drive_namespace["convert_action_from_sim_to_real"]
+convert_action_from_real_to_sim = _drive_namespace["convert_action_from_real_to_sim"]
 
 
 def _load_open_gripper_function():
-    source_path = (
-        REPO_ROOT / "embodichain" / "agents" / "agentchord" / "atom_actions.py"
-    )
-    source = source_path.read_text()
-    module = ast.parse(source, filename=str(source_path))
-    open_gripper_node = next(
-        node
-        for node in module.body
-        if isinstance(node, ast.FunctionDef) and node.name == "open_gripper"
-    )
-    open_gripper_module = ast.Module(body=[open_gripper_node], type_ignores=[])
     plan_calls = {"count": 0}
 
     def _stub_get_arm_states(env, robot_name):
@@ -132,6 +161,7 @@ def _load_open_gripper_function():
         plan_calls["count"] += 1
 
     namespace = {
+        "Any": Any,
         "np": np,
         "torch": torch,
         "get_arm_states": _stub_get_arm_states,
@@ -139,9 +169,7 @@ def _load_open_gripper_function():
         "finalize_actions": _finalize_actions,
         "log_info": lambda *args, **kwargs: None,
     }
-    exec(
-        compile(open_gripper_module, filename=str(source_path), mode="exec"), namespace
-    )
+    _load_atom_functions(["open_gripper"], namespace)
     return namespace["open_gripper"], plan_calls
 
 
@@ -199,6 +227,38 @@ class _ObjectMovementEnv(_DummyEnv):
     def update_obj_info(self) -> None:
         super().update_obj_info()
         self.obj_info["cup"]["pose"] = self.current_object_pose.clone()
+
+
+class _RealControllerEnv:
+    def __init__(self) -> None:
+        self.backend = "real"
+        self.left_arm_joints = [0, 2, 4, 6, 8, 10]
+        self.right_arm_joints = [1, 3, 5, 7, 9, 11]
+        self.left_eef_joints = [12, 13]
+        self.right_eef_joints = [14, 15]
+        self.init_qpos = np.zeros(16, dtype=np.float32)
+        self.left_arm_current_qpos = np.zeros(6, dtype=np.float32)
+        self.right_arm_current_qpos = np.zeros(6, dtype=np.float32)
+        self.left_arm_current_gripper_state = np.array([1.0], dtype=np.float32)
+        self.right_arm_current_gripper_state = np.array([1.0], dtype=np.float32)
+        self.left_gripper_joint_limits = (0.2, 0.4)
+        self.right_gripper_joint_limits = (1.0, 3.0)
+        self.current_step = 0
+        self.commands: list[tuple[np.ndarray, int, bool]] = []
+
+    def set_current_qpos(
+        self,
+        qpos: np.ndarray,
+        interp_num: int = 0,
+        wait: bool = True,
+    ) -> None:
+        self.commands.append((qpos.copy(), interp_num, wait))
+
+    def get_arm_fk(self, qpos, is_left: bool):
+        pose = np.eye(4, dtype=np.float32)
+        pose[0, 3] = float(np.asarray(qpos).sum())
+        pose[1, 3] = 1.0 if is_left else -1.0
+        return pose
 
 
 def test_open_gripper_skips_when_skip_condition_is_met() -> None:
@@ -306,3 +366,54 @@ def test_drive_checks_monitors_before_overwriting_previous_object_info() -> None
     assert result["monitor_index"] == 0
     assert env.update_calls == 1
     assert env.obj_info["cup"]["pose"][0, 3] == torch.tensor(0.03)
+
+
+def test_convert_action_between_sim_and_real_layouts() -> None:
+    sim_action = np.arange(16, dtype=np.float32)
+
+    real_action = convert_action_from_sim_to_real(sim_action)
+    round_trip = convert_action_from_real_to_sim(real_action)
+
+    np.testing.assert_allclose(
+        real_action,
+        np.array([0, 2, 4, 6, 8, 10, 12, 1, 3, 5, 7, 9, 11, 14], dtype=np.float32),
+    )
+    np.testing.assert_allclose(round_trip[:13], sim_action[:13])
+    assert round_trip[13] == sim_action[12]
+    np.testing.assert_allclose(round_trip[14:], np.array([14, 14], dtype=np.float32))
+
+
+def test_real_drive_maps_and_sends_controller_qpos() -> None:
+    env = _RealControllerEnv()
+    right_arm_action = np.array(
+        [[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 0.25, 0.25]],
+        dtype=np.float32,
+    )
+
+    result = drive(
+        left_arm_action=None,
+        right_arm_action=right_arm_action,
+        env=env,
+        return_result=True,
+        wait=False,
+        interp_num=3,
+    )
+
+    assert len(env.commands) == 1
+    command, interp_num, wait = env.commands[0]
+    assert interp_num == 3
+    assert wait is False
+    np.testing.assert_allclose(
+        result["actions"][0],
+        np.array(
+            [0, 0, 0, 0, 0, 0, 1.0, 1, 2, 3, 4, 5, 6, 0.25],
+            dtype=np.float32,
+        ),
+    )
+    np.testing.assert_allclose(command[:6], np.zeros(6, dtype=np.float32))
+    assert command[6] == np.float32(0.4)
+    np.testing.assert_allclose(command[7:13], np.arange(1, 7, dtype=np.float32))
+    assert command[13] == np.float32(1.5)
+    np.testing.assert_allclose(env.right_arm_current_qpos, np.arange(1, 7))
+    np.testing.assert_allclose(env.right_arm_current_gripper_state, np.array([0.25]))
+    assert env.current_step == 1

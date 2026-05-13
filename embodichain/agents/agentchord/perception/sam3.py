@@ -16,13 +16,21 @@
 
 from __future__ import annotations
 
-__all__ = [
-    "agent_graph",
-    "atom_action_utils",
-    "atom_actions",
-    "error_functions",
-    "graph_spec",
-    "monitor_functions",
-    "monitor_utils",
-    "perception",
-]
+from pathlib import Path
+from typing import Any
+
+__all__ = ["get_sam_mask"]
+
+
+def get_sam_mask(
+    predictor: Any,
+    obj_name: str,
+    img_path: str | Path,
+    save_path: str | Path | None = None,
+) -> Any:
+    """Run a SAM-style text-prompted segmentation predictor on one image."""
+    label = obj_name.replace("_", " ")
+    if save_path is not None:
+        predictor.save_dir = Path(save_path)
+    predictor.set_image(str(img_path))
+    return predictor(text=[label])

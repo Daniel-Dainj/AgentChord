@@ -19,6 +19,7 @@ from __future__ import annotations
 import numpy as np
 from embodichain.utils.logger import log_info, log_warning, log_error
 from copy import deepcopy
+
 from embodichain.lab.gym.utils.misc import (
     mul_linear_expand,
     get_rotation_replaced_pose,
@@ -27,21 +28,27 @@ from embodichain.utils.math import get_offset_pose
 import torch
 from tqdm import tqdm
 from scipy.spatial.transform import Rotation as R
-from embodichain.utils.utility import encode_image
-from functools import partial
 
 # Import utility functions for atom actions
 from embodichain.agents.agentchord.atom_action_utils import (
-    draw_axis,
-    get_arm_states,
-    find_nearest_valid_pose,
-    get_qpos,
-    plan_trajectory,
-    plan_gripper_trajectory,
-    finalize_actions,
-    extract_drive_calls,
     apply_offset_to_pose,
+    convert_action_from_real_to_sim,
+    convert_action_from_sim_to_real,
+    draw_axis,
+    extract_drive_calls,
+    finalize_actions,
+    find_nearest_valid_pose,
+    get_function_name,
+    get_arm_states,
+    get_qpos,
+    is_real_backend,
+    plan_gripper_trajectory,
+    plan_trajectory,
     resolve_action,
+    resolve_object_pose,
+    set_qpos,
+    sim_action_dim,
+    sync_agent_state_from_sim_action,
     sync_agent_state_from_robot,
 )
 from embodichain.agents.agentchord.error_functions import (
@@ -55,6 +62,8 @@ from embodichain.agents.agentchord.monitor_functions import *
 __all__ = [
     "back_to_initial_pose",
     "close_gripper",
+    "convert_action_from_real_to_sim",
+    "convert_action_from_sim_to_real",
     "drive",
     "grasp",
     "move_by_relative_offset",
@@ -64,7 +73,9 @@ __all__ = [
     "open_gripper",
     "orient_eef",
     "place_on_table",
+    "resolve_object_pose",
     "rotate_eef",
+    "set_qpos",
 ]
 
 """
@@ -135,14 +146,6 @@ def grasp(
     force_valid=False,
     **kwargs,
 ):
-    # Get target object
-    obj_uids = env.sim.get_rigid_object_uid_list()
-    if obj_name in obj_uids:
-        target_obj = env.sim.get_rigid_object(obj_name)
-    else:
-        log_error(f"No matched object {obj_uids}.")
-    target_obj_pose = target_obj.get_local_pose(to_matrix=True).squeeze(0)
-
     # Open the gripper if currently closed
     actions = None
     select_arm_current_gripper_state = (
@@ -163,6 +166,13 @@ def grasp(
     ) = get_arm_states(env, robot_name)
     select_arm_base_pose = (
         env.left_arm_base_pose if is_left else env.right_arm_base_pose
+    )
+    target_obj_pose = resolve_object_pose(
+        env,
+        obj_name,
+        robot_name,
+        kwargs,
+        reference=select_arm_current_pose,
     )
     base_to_eef_xy_dis = torch.norm(
         select_arm_base_pose[:2, 3] - select_arm_current_pose[:2, 3]
@@ -334,7 +344,9 @@ def place_on_table(
     **kwargs,
 ):
 
-    init_obj_height = env.obj_info.get(obj_name).get("height")
+    init_obj_height = getattr(env, f"{obj_name}_height", None)
+    if init_obj_height is None:
+        init_obj_height = env.obj_info.get(obj_name).get("height")
     height = init_obj_height + kwargs.get("eps", 0.03)
 
     traj_actions = move_to_absolute_position(
@@ -377,14 +389,13 @@ def move_relative_to_object(
 
     # ---------------------------------------- Pose ----------------------------------------
     # Resolve target object
-    obj_uids = env.sim.get_rigid_object_uid_list()
-    if obj_name in obj_uids:
-        target_obj = env.sim.get_rigid_object(obj_name)
-    else:
-        log_error("No matched object.")
-
-    # Get object base pose (4x4 matrix)
-    target_obj_pose = target_obj.get_local_pose(to_matrix=True).squeeze(0)
+    target_obj_pose = resolve_object_pose(
+        env,
+        obj_name,
+        robot_name,
+        kwargs,
+        reference=select_arm_current_pose,
+    )
 
     # Construct target pose (preserve orientation)
     move_target_pose = deepcopy(select_arm_current_pose)
@@ -910,6 +921,7 @@ def drive(
     interactive_error_injection=False,
     **kwargs,
 ):
+    real_backend = is_real_backend(env, kwargs)
     left_arm_action = resolve_action(left_arm_action, env, kwargs)
     right_arm_action = resolve_action(right_arm_action, env, kwargs)
 
@@ -928,7 +940,7 @@ def drive(
 
         left_arm_index = env.left_arm_joints + env.left_eef_joints
         right_arm_index = env.right_arm_joints + env.right_eef_joints
-        actions = np.zeros((len(right_arm_action), len(env.init_qpos)))
+        actions = np.zeros((len(right_arm_action), sim_action_dim(env)))
         actions[:, left_arm_index] = left_arm_action
         actions[:, right_arm_index] = right_arm_action
 
@@ -943,7 +955,7 @@ def drive(
         )
 
         actions = np.zeros(
-            (len(right_arm_action), len(env.robot.get_qpos().squeeze(0))),
+            (len(right_arm_action), sim_action_dim(env)),
             dtype=np.float32,
         )
         actions[:, left_arm_index] = left_arm_action
@@ -960,7 +972,7 @@ def drive(
         )
 
         actions = np.zeros(
-            (len(left_arm_action), len(env.robot.get_qpos().squeeze(0))),
+            (len(left_arm_action), sim_action_dim(env)),
             dtype=np.float32,
         )
         actions[:, left_arm_index] = left_arm_action
@@ -968,6 +980,54 @@ def drive(
 
     else:
         log_error("At least one arm action should be provided.")
+
+    if real_backend:
+        if interactive_error_injection:
+            log_warning("interactive_error_injection is ignored for real backend.")
+        real_actions = [convert_action_from_sim_to_real(action) for action in actions]
+        executed_actions = []
+        for i, real_action in enumerate(tqdm(real_actions)):
+            set_qpos(
+                env,
+                real_action,
+                wait=kwargs.get("wait", True),
+                interp_num=kwargs.get("interp_num", 0),
+            )
+            executed_actions.append(real_action)
+            sync_agent_state_from_sim_action(env, actions[i])
+            if hasattr(env, "current_step"):
+                env.current_step += 1
+
+            if monitor_sequences is not None:
+                for monitor_idx, monitor_sequence in enumerate(monitor_sequences):
+                    for function in monitor_sequence:
+                        result = function()
+                        if result == True:
+                            if hasattr(env, "update_obj_info"):
+                                env.update_obj_info()
+                            function_name = get_function_name(function)
+                            log_warning(
+                                f"Monitor function {function_name} triggered at step {i}."
+                            )
+                            if return_result:
+                                return {
+                                    "actions": executed_actions,
+                                    "monitor_index": monitor_idx,
+                                    "monitor_name": function_name,
+                                    "step_index": i,
+                                }
+                            return real_actions
+
+        if monitor_sequences is not None:
+            log_info("No monitor sequences triggered during execution.")
+        if return_result:
+            return {
+                "actions": real_actions,
+                "monitor_index": None,
+                "monitor_name": None,
+                "step_index": None,
+            }
+        return real_actions
 
     actions = torch.from_numpy(actions).to(dtype=torch.float32).unsqueeze(1)
     actions = list(actions.unbind(dim=0))
