@@ -16,18 +16,15 @@
 
 from __future__ import annotations
 
-from embodichain.utils.logger import log_error
 from embodichain.agents.agentchord.monitor_utils import (
     _as_pose_matrix,
     _get_object_pose,
-    get_arm_object_distance,
     get_gripper_distance,
 )
 import numpy as np
 import torch
 
 __all__ = [
-    "monitor_gripper_distance",
     "monitor_object_held",
     "monitor_object_moved",
 ]
@@ -64,55 +61,24 @@ def monitor_object_moved(
 def monitor_object_held(
     env,
     robot_name: str,
-    obj_name: str,
-    threshold: float = 0.05,
-    **kwargs,
-) -> bool:
-    """Trigger when an object is no longer being held by the corresponding arm.
-
-    The function name is historical. To keep all monitor semantics consistent,
-    this function returns ``True`` when failure occurs, namely when the object is
-    too far from the corresponding arm end-effector and is treated as no longer held.
-
-    Args:
-        env: The current agent environment.
-        robot_name: Robot-side selector containing ``left`` or ``right``.
-        obj_name: Target rigid object name.
-        threshold: Maximum allowed arm-object distance before hold failure is triggered.
-
-    Returns:
-        ``True`` if the monitored failure occurs, i.e. the object is no longer
-        close enough to the corresponding arm.
-    """
-    arm_object_distance = get_arm_object_distance(env, robot_name, obj_name)
-    return arm_object_distance > threshold
-
-
-# TODO: not used currently
-def monitor_gripper_distance(
-    env,
-    robot_name: str,
+    obj_name: str | None = None,
     threshold: float = 0.01,
-    comparison: str = "less",
     **kwargs,
 ) -> bool:
-    """Trigger when gripper distance violates the expected threshold condition.
+    """Trigger when the selected gripper appears to have lost its held object.
+
+    The monitor uses the current gripper opening distance instead of object-arm
+    distance. It returns ``True`` when the opening is below ``threshold``, which
+    indicates the gripper has closed too far and likely no object remains between
+    the fingers.
 
     Args:
         env: The current agent environment.
-        robot_name: Robot-side selector containing ``left`` or ``right``.
-        threshold: Threshold for the gripper distance.
-        comparison: ``"less"`` checks ``distance < threshold`` and ``"greater"``
-            checks ``distance > threshold``.
+        robot_name: Arm identifier containing ``"left"`` or ``"right"``.
+        obj_name: Optional object name kept for recovery graph compatibility.
+        threshold: Minimum expected gripper opening distance while holding.
 
     Returns:
-        ``True`` if the monitored failure occurs and the comparison condition is unsatisfied.
+        ``True`` if the monitored failure occurs, i.e. hold loss is detected.
     """
-    distance = get_gripper_distance(env, robot_name)
-
-    if comparison == "less":
-        return distance < threshold
-    if comparison == "greater":
-        return distance > threshold
-
-    log_error(f"Unsupported comparison '{comparison}'. Expected 'less' or 'greater'.")
+    return get_gripper_distance(env, robot_name) < threshold

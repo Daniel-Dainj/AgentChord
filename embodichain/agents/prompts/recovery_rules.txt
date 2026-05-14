@@ -15,7 +15,8 @@ Binding rules:
 - `failure_name` should be short and stable.
 - `monitors` is a list of monitor templates. Supported types are:
   - `object_moved`: fields `objects` or `obj_name`, optional `threshold`
-  - `hold_lost`: fields `robot_name`, `obj_name`, optional `threshold`
+  - `hold_lost`: fields `robot_name`, `obj_name`, optional gripper-distance
+    `threshold`
 - The compiler canonicalizes common aliases and can infer simple fields from
   the nominal edge: grasped object names for `object_moved`, both grasp arms for
   `regrasp_both`, and single-object grasp targets when unambiguous.
@@ -37,7 +38,8 @@ Monitor guidance:
 - All monitor templates use `True` = failure occurred.
 - Use `object_moved` when an object is expected to remain still, such as before
   or during grasping.
-- Use `hold_lost` only when the object should already be held by an arm.
+- Use `hold_lost` only when the object should already be held by an arm. It is
+  checked from the current gripper opening distance.
 - If different failures need different recovery policies, create separate
   bindings instead of mixing them in one binding.
 

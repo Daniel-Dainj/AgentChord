@@ -433,7 +433,7 @@ def _normalize_monitor(
         "type": "hold_lost",
         "robot_name": str(robot_name),
         "obj_name": str(obj_name),
-        "threshold": monitor.get("threshold", 0.05),
+        "threshold": monitor.get("threshold", 0.01),
     }, issues
 
 
@@ -820,7 +820,7 @@ def _expand_monitor_sequence(binding: Mapping[str, Any]) -> list[dict[str, Any]]
                     "kwargs": {
                         "robot_name": monitor["robot_name"],
                         "obj_name": monitor["obj_name"],
-                        "threshold": monitor.get("threshold", 0.05),
+                        "threshold": monitor.get("threshold", 0.01),
                     },
                 }
             )

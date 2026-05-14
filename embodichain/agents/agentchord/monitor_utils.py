@@ -19,13 +19,11 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from embodichain.agents.agentchord.atom_action_utils import get_arm_states
 from embodichain.utils.logger import log_error
 from embodichain.utils.math import matrix_from_quat
 
 __all__ = [
     "capture_object_state",
-    "get_arm_object_distance",
     "get_gripper_distance",
 ]
 
@@ -87,19 +85,6 @@ def _get_object_pose(env, obj_name: str) -> torch.Tensor:
     return _get_rigid_object(env, obj_name).get_local_pose(to_matrix=True).squeeze(0)
 
 
-def _get_actual_arm_pose(env, robot_name: str) -> torch.Tensor:
-    """Get the current end-effector pose of the selected arm."""
-    arm_qpos = env.robot.get_qpos().squeeze(0)[
-        env.left_arm_joints if "left" in robot_name else env.right_arm_joints
-    ]
-    arm_pose = env.robot.compute_fk(
-        arm_qpos,
-        name="left_arm" if "left" in robot_name else "right_arm",
-        to_matrix=True,
-    ).squeeze(0)
-    return arm_pose
-
-
 def capture_object_state(env, obj_name: str) -> dict[str, torch.Tensor]:
     """Capture the current object pose for frame-to-frame monitoring."""
     pose = _get_object_pose(env, obj_name)
@@ -110,14 +95,12 @@ def capture_object_state(env, obj_name: str) -> dict[str, torch.Tensor]:
 
 
 def get_gripper_distance(env, robot_name: str) -> float:
-    """Estimate the current gripper opening distance."""
+    """Get the current gripper opening distance for the selected arm."""
     side = "right" if "right" in robot_name else "left"
+
+    if hasattr(env, "get_current_qpos"):
+        gripper_qpos = env.get_current_qpos(name=f"{side}_eef")
+        return float(np.mean(np.abs(np.asarray(gripper_qpos, dtype=np.float32))))
+
     eef_qpos = env.robot.get_qpos(name=f"{side}_eef").squeeze(0)
     return float(torch.mean(torch.abs(eef_qpos)).item())
-
-
-def get_arm_object_distance(env, robot_name: str, obj_name: str) -> float:
-    """Compute the distance between the current arm end-effector and object."""
-    arm_pose = _get_actual_arm_pose(env, robot_name)
-    obj_pose = _get_object_pose(env, obj_name)
-    return float(torch.norm(arm_pose[:3, 3] - obj_pose[:3, 3]).item())
