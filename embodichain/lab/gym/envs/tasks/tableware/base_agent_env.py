@@ -16,14 +16,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import torch
+from embodichain.data import database_agent_prompt_dir
 from embodichain.utils import logger
 
 __all__ = ["BaseAgentEnv"]
 
 
 class BaseAgentEnv:
-
     def _init_agents(self, agent_config, task_name, agent_config_path=None):
         from embodichain.agents.hierarchy.task_agent import TaskAgent
         from embodichain.agents.hierarchy.compile_agent import CompileAgent
@@ -179,6 +181,10 @@ class BaseAgentEnv:
 
     # -------------------- get compiled graph for action list --------------------
     def generate_graph_for_actions(self, regenerate=False, recovery=False, **kwargs):
+        kwargs.setdefault(
+            "log_dir",
+            Path(database_agent_prompt_dir) / "sim" / self.compile_agent.task_name,
+        )
         logger.log_info(
             f"Generate graph for creating {'recovery' if recovery else ''} action list for {self.compile_agent.task_name}.",
             color="yellow" if recovery else "green",
@@ -224,7 +230,7 @@ class BaseAgentEnv:
         self, regenerate=False, recovery=False, *args, **kwargs
     ):
         graph_file_path, compile_kwargs, _ = self.generate_graph_for_actions(
-            regenerate=regenerate, recovery=recovery
+            regenerate=regenerate, recovery=recovery, **kwargs
         )
         compile_kwargs["interactive_error_injection"] = kwargs.get(
             "interactive_error_injection", False

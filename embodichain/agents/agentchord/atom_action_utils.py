@@ -92,7 +92,7 @@ def resolve_object_pose(env, obj_name: str, robot_name: str, kwargs, reference=N
         or kwargs.get("use_perception")
         or kwargs.get("use_perception_pose")
     ):
-        from embodichain.agents.agentchord.perception.pose_estimation import (
+        from embodichain.deploy.perception.pose_estimation import (
             get_obj_pose_from_perception,
         )
 

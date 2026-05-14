@@ -24,5 +24,4 @@ __all__ = [
     "graph_spec",
     "monitor_functions",
     "monitor_utils",
-    "perception",
 ]

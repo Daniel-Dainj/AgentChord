@@ -259,6 +259,7 @@ def _runtime_kwargs(
             "recovery_enabled",
             "observations",
             "regenerate",
+            "log_dir",
         }
     )
     return {key: value for key, value in kwargs.items() if key not in prompt_only_keys}
