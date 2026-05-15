@@ -29,7 +29,7 @@
 
 <p>
   <a href="https://arxiv.org/abs/2605.11951">[📄 Paper]</a>
-  <a href="https://shengxu.net/AgentChord/">[🌐 Project Page]</a>
+  <a href="https://edem-ai.github.io/AgentChord">[🌐 Project Page]</a>
   <a href="LICENSE">[⚖️ License]</a>
 </p>
 
@@ -108,7 +108,7 @@ System requirements inherited from EmbodiChain:
 Install from this repository:
 
 ```bash
-git clone https://github.com/Jasonxu1225/AgentChord.git
+git clone https://github.com/EDEM-AI/AgentChord.git
 cd AgentChord
 pip install -e . --extra-index-url http://pyp.open3dv.site:2345/simple/ --trusted-host pyp.open3dv.site
 ```
