@@ -171,10 +171,16 @@ class CobotMagicCfg(RobotCfg):
         chain = create_pk_chain(urdf_path, device)
 
         left_arm_chain = create_pk_serial_chain(
-            chain=chain, end_link_name="link6", root_link_name="base_link"
+            chain=chain,
+            device=device,
+            end_link_name="link6",
+            root_link_name="base_link",
         ).to(device=device)
         right_arm_chain = create_pk_serial_chain(
-            chain=chain, end_link_name="link6", root_link_name="base_link"
+            chain=chain,
+            device=device,
+            end_link_name="link6",
+            root_link_name="base_link",
         ).to(device=device)
         return {"left_arm": left_arm_chain, "right_arm": right_arm_chain}
 

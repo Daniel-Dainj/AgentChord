@@ -14,9 +14,42 @@
 # limitations under the License.
 # ----------------------------------------------------------------------------
 
+import ctypes
 import os
+import sys
+import sysconfig
+from pathlib import Path
 
 embodichain_dir = os.path.dirname(__file__)
+
+
+def _preload_python_shared_library():
+    """Preload the active interpreter's shared library for native extensions.
+
+    Some binary dependencies (such as DexSim in uv-managed Python envs) expect
+    `libpythonX.Y.so` to already be globally visible at import time.
+    """
+    if sys.platform != "linux":
+        return
+
+    libdir = sysconfig.get_config_var("LIBDIR")
+    ldlibrary = sysconfig.get_config_var("LDLIBRARY")
+    if not libdir or not ldlibrary:
+        return
+
+    libpython = Path(libdir) / ldlibrary
+    if not libpython.is_file():
+        return
+
+    try:
+        ctypes.CDLL(str(libpython), mode=getattr(ctypes, "RTLD_GLOBAL", 0))
+    except OSError:
+        # Fall back to the system loader if the shared library is already visible
+        # or this interpreter was built without a loadable libpython target.
+        pass
+
+
+_preload_python_shared_library()
 
 
 # Read version from VERSION file

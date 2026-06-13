@@ -85,6 +85,14 @@ def create_pk_serial_chain(
 
     pk = lazy_import_pytorch_kinematics()
 
+    target_device = device
+    if target_device is None and chain is not None:
+        target_device = getattr(chain, "device", None)
+
+    target_dtype = kwargs.pop("dtype", None)
+    if target_dtype is None and chain is not None:
+        target_dtype = getattr(chain, "dtype", None)
+
     if chain is None:
         try:
             with open(urdf_path, "rb") as f:
@@ -99,17 +107,38 @@ def create_pk_serial_chain(
                 return pk.build_serial_chain_from_urdf(
                     urdf_str,
                     end_link_name=end_link_name,
-                ).to(device=device)
+                ).to(device=target_device)
             else:
                 return pk.build_serial_chain_from_urdf(
                     urdf_str,
                     end_link_name=end_link_name,
                     root_link_name=root_link_name,
-                ).to(device=device)
+                ).to(device=target_device)
     else:
-        return pk.SerialChain(
-            chain=chain, end_frame_name=end_link_name, root_frame_name=root_link_name
+        serial_chain_kwargs = {}
+        source_chain = chain
+        source_device = getattr(chain, "device", None)
+        source_dtype = target_dtype if target_dtype is not None else getattr(
+            chain, "dtype", None
         )
+
+        if source_dtype is not None:
+            serial_chain_kwargs["dtype"] = source_dtype
+
+        # Build the serial sub-chain on CPU first, then move it to the target
+        # device. This avoids pytorch_kinematics constructor bugs when a CUDA
+        # parent chain is re-indexed during SerialChain initialization.
+        if source_device is not None and str(source_device).startswith("cuda"):
+            source_chain = deepcopy(chain).to(device="cpu", dtype=source_dtype)
+        elif source_dtype is not None:
+            source_chain = deepcopy(chain).to(dtype=source_dtype)
+
+        return pk.SerialChain(
+            chain=source_chain,
+            end_frame_name=end_link_name,
+            root_frame_name=root_link_name,
+            **serial_chain_kwargs,
+        ).to(device=target_device)
 
 
 def build_reduced_pinocchio_robot(

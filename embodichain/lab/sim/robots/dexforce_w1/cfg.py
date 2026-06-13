@@ -352,10 +352,16 @@ class DexforceW1Cfg(RobotCfg):
         chain = create_pk_chain(urdf_path, device)
 
         left_arm_chain = create_pk_serial_chain(
-            chain=chain, end_link_name="left_ee", root_link_name="left_arm_base"
+            chain=chain,
+            device=device,
+            end_link_name="left_ee",
+            root_link_name="left_arm_base",
         ).to(device=device)
         right_arm_chain = create_pk_serial_chain(
-            chain=chain, end_link_name="right_ee", root_link_name="right_arm_base"
+            chain=chain,
+            device=device,
+            end_link_name="right_ee",
+            root_link_name="right_arm_base",
         ).to(device=device)
 
         return {
