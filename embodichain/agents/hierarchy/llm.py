@@ -34,7 +34,7 @@ __all__ = ["compile_llm", "create_llm", "recovery_llm", "task_llm"]
 # ------------------------------------------------------------------------------
 
 
-def create_llm(*, temperature=0.0, model="gpt-4o"):
+def create_llm(*, temperature=0.0, model="qwen3.7-plus"):
     return ChatOpenAI(
         temperature=temperature,
         model=model,
@@ -49,28 +49,26 @@ def create_llm(*, temperature=0.0, model="gpt-4o"):
 
 
 # Initialize LLM instances, but handle errors gracefully for documentation builds
-def _create_llm_safe(*, temperature=0.0, model="gpt-4o"):
+def _create_llm_safe(*, temperature=0.0, model="qwen3.7-plus"):
     try:
         return create_llm(temperature=temperature, model=model)
     except Exception:
         return None
 
 
-task_llm = _create_llm_safe(temperature=0.0, model="gpt-5")
-recovery_llm = _create_llm_safe(temperature=0.0, model="gpt-5")
-compile_llm = _create_llm_safe(temperature=0.0, model="gpt-5")
+task_llm = _create_llm_safe(temperature=0.0, model="qwen3.7-plus")
+recovery_llm = _create_llm_safe(temperature=0.0, model="qwen3.7-plus")
+compile_llm = _create_llm_safe(temperature=0.0, model="qwen3.7-plus")
 
 
 def _health_check() -> None:
     """Run a minimal LLM connectivity check without printing credentials."""
-    missing_env = [
-        env_name for env_name in ("OPENAI_API_KEY", "LLM_URL") if not os.getenv(env_name)
-    ]
+    missing_env = [env_name for env_name in ("OPENAI_API_KEY", "LLM_URL") if not os.getenv(env_name)]
     if missing_env:
         missing = ", ".join(missing_env)
         raise SystemExit(f"Missing required environment variable(s): {missing}")
 
-    model = os.getenv("AGENTCHORD_LLM_HEALTHCHECK_MODEL", "gpt-5")
+    model = os.getenv("AGENTCHORD_LLM_HEALTHCHECK_MODEL", "qwen3.7-plus")
     llm = create_llm(temperature=0.0, model=model)
     response = llm.invoke("Reply with exactly: AgentChord LLM health check OK")
     content = getattr(response, "content", str(response)).strip()

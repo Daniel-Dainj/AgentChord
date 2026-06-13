@@ -21,6 +21,13 @@ import numpy as np
 import argparse
 import torch
 
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 from embodichain.utils.utility import load_json
 from embodichain.lab.gym.utils.gym_utils import (
     add_env_launcher_args_to_parser,

@@ -21,6 +21,13 @@ import os
 import torch
 import tqdm
 
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 from embodichain.lab.gym.utils.gym_utils import (
     add_env_launcher_args_to_parser,
     build_env_cfg_from_args,
@@ -30,9 +37,7 @@ from embodichain.utils.logger import log_warning, log_info, log_error
 
 def generate_and_execute_action_list(env, idx, debug_mode, **kwargs):
 
-    action_list = env.get_wrapper_attr("create_demo_action_list")(
-        action_sentence=idx, **kwargs
-    )
+    action_list = env.get_wrapper_attr("create_demo_action_list")(action_sentence=idx, **kwargs)
 
     if action_list is None or len(action_list) == 0:
         log_warning("Action is invalid. Skip to next generation.")
@@ -42,9 +47,7 @@ def generate_and_execute_action_list(env, idx, debug_mode, **kwargs):
         log_info("Action list was already executed by the agent runtime.")
         return True
 
-    for action in tqdm.tqdm(
-        action_list, desc=f"Executing action list #{idx}", unit="step"
-    ):
+    for action in tqdm.tqdm(action_list, desc=f"Executing action list #{idx}", unit="step"):
         # Step the environment with the current action
         # The environment will automatically detect truncation based on action_length
         obs, reward, terminated, truncated, info = env.step(action)
@@ -88,9 +91,7 @@ def generate_function(
     while True:
         ret = []
         for trajectory_idx in range(num_traj):
-            valid = generate_and_execute_action_list(
-                env, trajectory_idx, debug_mode, **kwargs
-            )
+            valid = generate_and_execute_action_list(env, trajectory_idx, debug_mode, **kwargs)
 
             if not valid:
                 # Failed execution: reset without saving invalid data
@@ -108,9 +109,7 @@ def generate_function(
 
 def main(args, env, gym_config):
     if getattr(args, "preview", False):
-        log_info(
-            "Preview mode enabled. Launching environment preview...", color="green"
-        )
+        log_info("Preview mode enabled. Launching environment preview...", color="green")
         preview(env)
 
     log_info("Start offline data generation.", color="green")
@@ -126,9 +125,7 @@ def main(args, env, gym_config):
             debug_mode=getattr(args, "debug_mode", False),
             regenerate=getattr(args, "regenerate", False),
             recovery=getattr(args, "recovery", False),
-            interactive_error_injection=getattr(
-                args, "interactive_error_injection", False
-            ),
+            interactive_error_injection=getattr(args, "interactive_error_injection", False),
         )
 
     # Final reset.
